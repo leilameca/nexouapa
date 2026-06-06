@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "home": "Home",
+    "vitrina": "Showcase",
+    "pomodoro": "Pomodoro",
+    "notes": "Notes",
+    "rankings": "Rankings",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+  "feed": {
+    "placeholder": "What do you want to share today?",
+    "post_general": "Post",
+    "post_question": "Academic Question",
+    "post_project": "Showcase Project",
+    "publish": "Publish",
+    "subject_label": "Subject",
+    "subject_placeholder": "E.g. Calculus I, Web Programming…",
+    "project_title": "Project title",
+    "project_url": "Project URL / repository",
+    "project_image": "Thumbnail image",
+    "comment": "Comment",
+    "repost": "Repost",
+    "like": "Like",
+    "upvote": "Upvote",
+    "reply": "Reply",
+    "mark_useful": "Mark as useful",
+    "view_thread": "View thread",
+    "loading": "Loading…"
+  },
+  "auth": {
+    "login": "Log in",
+    "register": "Sign up",
+    "email": "Institutional email",
+    "password": "Password",
+    "name": "Full name",
+    "school": "School",
+    "career": "Career",
+    "select_school": "Select your school",
+    "select_career": "Select your career",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "email_hint": "Must be a @uapa.edu.do email"
+  },
+  "pomodoro": {
+    "focus": "Focus",
+    "break": "Break",
+    "rooms": "Active rooms",
+    "join": "Join",
+    "leave": "Leave",
+    "participants": "participants",
+    "chat_locked": "Chat is enabled during breaks",
+    "chat_placeholder": "Type something…",
+    "send": "Send",
+    "create_room": "Create room",
+    "room_name": "Room name"
+  },
+  "rankings": {
+    "title": "Top contributors",
+    "this_week": "This week",
+    "reputation": "rep. pts",
+    "gold": "Gold",
+    "silver": "Silver",
+    "bronze": "Bronze"
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "language": "Language",
+    "profile": "Profile",
+    "save": "Save changes",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "bio": "Short bio"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "error": "Something went wrong",
+    "success": "Saved successfully"
+  }
+}

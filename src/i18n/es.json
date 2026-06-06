@@ -1,0 +1,84 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "vitrina": "Vitrina",
+    "pomodoro": "Pomodoro",
+    "notes": "Apuntes",
+    "rankings": "Rankings",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión"
+  },
+  "feed": {
+    "placeholder": "¿Qué quieres compartir hoy?",
+    "post_general": "Publicación",
+    "post_question": "Pregunta académica",
+    "post_project": "Proyecto para Vitrina",
+    "publish": "Publicar",
+    "subject_label": "Asignatura",
+    "subject_placeholder": "Ej. Cálculo I, Programación Web…",
+    "project_title": "Título del proyecto",
+    "project_url": "URL del proyecto / repositorio",
+    "project_image": "Imagen miniatura",
+    "comment": "Comentar",
+    "repost": "Repostear",
+    "like": "Me gusta",
+    "upvote": "Votar",
+    "reply": "Responder",
+    "mark_useful": "Marcar útil",
+    "view_thread": "Ver hilo",
+    "loading": "Cargando…"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "email": "Correo institucional",
+    "password": "Contraseña",
+    "name": "Nombre completo",
+    "school": "Escuela",
+    "career": "Carrera",
+    "select_school": "Selecciona tu escuela",
+    "select_career": "Selecciona tu carrera",
+    "no_account": "¿No tienes cuenta?",
+    "have_account": "¿Ya tienes cuenta?",
+    "email_hint": "Debe ser un correo @uapa.edu.do"
+  },
+  "pomodoro": {
+    "focus": "Enfoque",
+    "break": "Descanso",
+    "rooms": "Salas activas",
+    "join": "Unirse",
+    "leave": "Salir",
+    "participants": "participantes",
+    "chat_locked": "El chat se habilita en el descanso",
+    "chat_placeholder": "Escribe algo…",
+    "send": "Enviar",
+    "create_room": "Crear sala",
+    "room_name": "Nombre de la sala"
+  },
+  "rankings": {
+    "title": "Top aportes",
+    "this_week": "Esta semana",
+    "reputation": "pts. reputación",
+    "gold": "Oro",
+    "silver": "Plata",
+    "bronze": "Bronce"
+  },
+  "settings": {
+    "title": "Configuración",
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "language": "Idioma",
+    "profile": "Perfil",
+    "save": "Guardar cambios",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "bio": "Biografía corta"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "error": "Ocurrió un error",
+    "success": "Guardado correctamente"
+  }
+}

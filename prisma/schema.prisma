@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id               String   @id @default(uuid())
+  name             String
+  email            String   @unique
+  passwordHash     String
+  school           String
+  career           String
+  bio              String?
+  avatarUrl        String?
+  githubUrl        String?
+  linkedinUrl      String?
+  reputationPoints Int      @default(0)
+  themePreference  String   @default("light")
+  langPreference   String   @default("es")
+  createdAt        DateTime @default(now())
+
+  posts            Post[]
+  interactions     Interaction[]
+  comments         Comment[]
+  roomParticipants RoomParticipant[]
+}
+
+// postType: "general" | "question" | "project"
+model Post {
+  id           String   @id @default(uuid())
+  userId       String
+  postType     String
+  content      String
+  subjectTag   String?
+  projectTitle String?
+  projectUrl   String?
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interactions Interaction[]
+  comments     Comment[]
+}
+
+// interactionType: "like" | "upvote" | "repost"
+model Interaction {
+  id              String   @id @default(uuid())
+  userId          String
+  postId          String
+  interactionType String
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, interactionType])
+}
+
+model Comment {
+  id              String   @id @default(uuid())
+  userId          String
+  postId          String
+  parentCommentId String?
+  commentText     String
+  isUseful        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentThread", fields: [parentCommentId], references: [id])
+  replies Comment[] @relation("CommentThread")
+}
+
+model PomodoroRoom {
+  id           String   @id @default(uuid())
+  name         String
+  school       String?
+  subjectTag   String?
+  timerSeconds Int      @default(1500)
+  isBreak      Boolean  @default(false)
+  cycleStart   DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  participants RoomParticipant[]
+}
+
+model RoomParticipant {
+  id       String   @id @default(uuid())
+  userId   String
+  roomId   String
+  joinedAt DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room PomodoroRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+}
