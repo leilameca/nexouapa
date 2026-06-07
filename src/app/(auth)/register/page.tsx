@@ -27,7 +27,7 @@ export default function RegisterPage() {
   function validate() {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = 'Requerido'
-    if (!form.email.endsWith('@uapa.edu.do')) e.email = a.email_hint
+    if (!form.email.endsWith('@uapa.edu.do') && !form.email.endsWith('@p.uapa.edu.do')) e.email = a.email_hint
     if (form.password.length < 8) e.password = 'Mínimo 8 caracteres'
     if (!form.school) e.school = 'Requerido'
     if (!form.career) e.career = 'Requerido'
@@ -118,7 +118,7 @@ export default function RegisterPage() {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="nexo-input"
-              placeholder="nombre@uapa.edu.do"
+              placeholder="nombre@p.uapa.edu.do"
             />
           </Field>
 

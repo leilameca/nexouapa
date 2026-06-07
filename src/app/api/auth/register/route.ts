@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
     if (!name || !email || !password || !school || !career) {
       return NextResponse.json({ error: 'Todos los campos son requeridos' }, { status: 400 })
     }
-    if (!email.endsWith('@uapa.edu.do')) {
-      return NextResponse.json({ error: 'Correo debe ser @uapa.edu.do' }, { status: 400 })
+    if (!email.endsWith('@uapa.edu.do') && !email.endsWith('@p.uapa.edu.do')) {
+      return NextResponse.json({ error: 'Correo debe ser @uapa.edu.do o @p.uapa.edu.do' }, { status: 400 })
     }
     if (password.length < 8) {
       return NextResponse.json({ error: 'Contraseña mínimo 8 caracteres' }, { status: 400 })

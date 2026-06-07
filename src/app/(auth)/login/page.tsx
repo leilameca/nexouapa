@@ -77,7 +77,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="nexo-input"
-              placeholder="nombre@uapa.edu.do"
+              placeholder="nombre@p.uapa.edu.do"
               required
             />
           </div>

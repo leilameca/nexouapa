@@ -29,8 +29,7 @@ export async function GET() {
     }))
 
     return NextResponse.json({ leaderboard })
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Error al obtener rankings' }, { status: 500 })
   }
 }

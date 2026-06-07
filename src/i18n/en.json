@@ -40,7 +40,7 @@
     "select_career": "Select your career",
     "no_account": "Don't have an account?",
     "have_account": "Already have an account?",
-    "email_hint": "Must be a @uapa.edu.do email"
+    "email_hint": "Must be @p.uapa.edu.do or @uapa.edu.do"
   },
   "pomodoro": {
     "focus": "Focus",
