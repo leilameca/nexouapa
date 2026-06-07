@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import {
   Home, Presentation, Timer, BookOpen, Trophy, Settings, LogOut
 } from 'lucide-react'
+import { signOut } from 'next-auth/react'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
 
@@ -71,6 +72,7 @@ export default function Sidebar() {
       {/* Bottom: logout */}
       <button
         title={label('nav.logout')}
+        onClick={() => signOut({ callbackUrl: '/login' })}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full transition-colors justify-center xl:justify-start"
         style={{ color: 'var(--text-muted)' }}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}

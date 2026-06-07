@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import {
   MessageCircle, Repeat2, Heart, ChevronUp, ExternalLink,
-  HelpCircle, Layers, FileText,
+  HelpCircle, Layers, FileText, Send,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
@@ -19,16 +19,23 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function Avatar({ name, url }: { name: string; url?: string }) {
+function Avatar({ name, url }: { name: string; url?: string | null }) {
   if (url) return <img src={url} alt={name} className="w-10 h-10 rounded-full object-cover" />
   return (
     <div
-      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
       style={{ background: 'var(--brand-primary)' }}
     >
       {name[0]?.toUpperCase()}
     </div>
   )
+}
+
+interface CommentData {
+  id: string
+  commentText: string
+  createdAt?: string
+  user: { id: string; name: string; avatarUrl?: string | null; career: string }
 }
 
 interface Props {
@@ -42,22 +49,49 @@ export default function PostCard({ post, onInteract }: Props) {
   const f = dict.feed
 
   const [showComments, setShowComments] = useState(false)
-  const [commentText, setCommentText] = useState('')
+  const [comments, setComments]         = useState<CommentData[]>([])
+  const [commentText, setCommentText]   = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [sending, setSending]           = useState(false)
+  const [commentCount, setCommentCount] = useState(post._count.comments)
 
-  const { Icon, color } = TYPE_META[post.postType]
+  const { Icon, color } = TYPE_META[post.postType as keyof typeof TYPE_META] ?? TYPE_META.general
   const isUpvotable = post.postType === 'question' || post.postType === 'project'
 
-  function interact(type: InteractionType) {
-    onInteract?.(post.id, type)
+  async function toggleComments() {
+    if (!showComments && comments.length === 0) {
+      setLoadingComments(true)
+      const res = await fetch(`/api/posts/${post.id}/comments`)
+      if (res.ok) {
+        const data = await res.json()
+        setComments(data.comments ?? [])
+      }
+      setLoadingComments(false)
+    }
+    setShowComments((v) => !v)
+  }
+
+  async function submitComment() {
+    if (!commentText.trim() || sending) return
+    setSending(true)
+    const res = await fetch(`/api/posts/${post.id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: commentText.trim() }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setComments((prev) => [...prev, data.comment])
+      setCommentCount((n) => n + 1)
+      setCommentText('')
+    }
+    setSending(false)
   }
 
   return (
     <article
       className="p-4 border-b transition-colors"
-      style={{
-        borderColor: 'var(--border)',
-        background: 'var(--bg-surface)',
-      }}
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface)')}
     >
@@ -73,7 +107,7 @@ export default function PostCard({ post, onInteract }: Props) {
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {post.user.career}
             </span>
-            <span className="text-xs ml-auto flex-shrink-0" style={{ color: 'var(--text-muted)' }} suppressHydrationWarning>
+            <span className="text-xs ml-auto shrink-0" style={{ color: 'var(--text-muted)' }} suppressHydrationWarning>
               {fmtDate(post.createdAt)}
             </span>
           </div>
@@ -84,17 +118,14 @@ export default function PostCard({ post, onInteract }: Props) {
             {post.subjectTag && (
               <span
                 className="text-xs px-2 py-0.5 rounded-full"
-                style={{
-                  background: `${color}18`,
-                  color,
-                }}
+                style={{ background: `${color}18`, color }}
               >
                 {post.subjectTag}
               </span>
             )}
           </div>
 
-          {/* Project title */}
+          {/* Project link */}
           {post.postType === 'project' && post.projectUrl && (
             <div className="mb-2">
               <a
@@ -105,7 +136,7 @@ export default function PostCard({ post, onInteract }: Props) {
                 style={{ color: 'var(--brand-primary)' }}
               >
                 <ExternalLink size={13} />
-                {post.projectUrl}
+                {post.projectTitle ?? post.projectUrl}
               </a>
             </div>
           )}
@@ -115,7 +146,7 @@ export default function PostCard({ post, onInteract }: Props) {
             {post.content}
           </p>
 
-          {/* Project thumbnail */}
+          {/* Thumbnail */}
           {post.thumbnailUrl && (
             <img
               src={post.thumbnailUrl}
@@ -128,10 +159,11 @@ export default function PostCard({ post, onInteract }: Props) {
           <div className="flex items-center gap-5 mt-3">
             <ActionBtn
               icon={<MessageCircle size={15} />}
-              count={post._count.comments}
+              count={commentCount}
               label={f.comment}
-              active={false}
-              onClick={() => setShowComments(!showComments)}
+              active={showComments}
+              activeColor="var(--brand-primary)"
+              onClick={toggleComments}
             />
             <ActionBtn
               icon={<Repeat2 size={15} />}
@@ -139,7 +171,7 @@ export default function PostCard({ post, onInteract }: Props) {
               label={f.repost}
               active={post.userInteractions?.includes('repost')}
               activeColor="#22c55e"
-              onClick={() => interact('repost')}
+              onClick={() => onInteract?.(post.id, 'repost')}
             />
             <ActionBtn
               icon={<Heart size={15} />}
@@ -147,7 +179,7 @@ export default function PostCard({ post, onInteract }: Props) {
               label={f.like}
               active={post.userInteractions?.includes('like')}
               activeColor="#ef4444"
-              onClick={() => interact('like')}
+              onClick={() => onInteract?.(post.id, 'like')}
             />
             {isUpvotable && (
               <ActionBtn
@@ -156,31 +188,61 @@ export default function PostCard({ post, onInteract }: Props) {
                 label={f.upvote}
                 active={post.userInteractions?.includes('upvote')}
                 activeColor="var(--brand-accent)"
-                onClick={() => interact('upvote')}
+                onClick={() => onInteract?.(post.id, 'upvote')}
               />
             )}
           </div>
 
-          {/* Comment input */}
+          {/* Comments section */}
           {showComments && (
-            <div className="mt-3 flex gap-2">
-              <input
-                type="text"
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder={`${f.reply}…`}
-                className="flex-1 text-sm rounded-lg px-3 py-1.5 outline-none"
-                style={{
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg)',
-                  color: 'var(--text-primary)',
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && commentText.trim()) {
-                    setCommentText('')
-                  }
-                }}
-              />
+            <div className="mt-3 space-y-3">
+              {loadingComments && (
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cargando comentarios…</p>
+              )}
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                    style={{ background: 'var(--brand-primary)' }}
+                  >
+                    {c.user.name[0]?.toUpperCase()}
+                  </div>
+                  <div
+                    className="flex-1 rounded-xl px-3 py-2"
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                  >
+                    <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {c.user.name}
+                    </span>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-primary)' }}>{c.commentText}</p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Comment input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submitComment()}
+                  placeholder={`${f.reply}…`}
+                  className="flex-1 text-sm rounded-lg px-3 py-1.5 outline-none"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                <button
+                  onClick={submitComment}
+                  disabled={!commentText.trim() || sending}
+                  className="px-3 py-1.5 rounded-lg text-white disabled:opacity-40"
+                  style={{ background: 'var(--brand-primary)' }}
+                >
+                  <Send size={13} />
+                </button>
+              </div>
             </div>
           )}
         </div>

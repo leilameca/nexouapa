@@ -1,25 +1,10 @@
 'use client'
-import { useState } from 'react'
-import { Plus, Users, Lock, Send } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Users, Lock, Send, Loader2 } from 'lucide-react'
 import PomodoroTimer from '@/components/pomodoro/PomodoroTimer'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
 import type { PomodoroRoom } from '@/types'
-
-const MOCK_ROOMS: PomodoroRoom[] = [
-  {
-    id: '1', name: 'Ingeniería de Software', school: 'Ingeniería y Tecnología',
-    timerSeconds: 1500, isBreak: false, cycleStart: new Date().toISOString(), participantCount: 12,
-  },
-  {
-    id: '2', name: 'Cálculo I', school: 'Ingeniería y Tecnología',
-    timerSeconds: 300, isBreak: true, cycleStart: new Date().toISOString(), participantCount: 5,
-  },
-  {
-    id: '3', name: 'Psicología Clínica', school: 'Ciencias de la Salud',
-    timerSeconds: 1500, isBreak: false, cycleStart: new Date().toISOString(), participantCount: 3,
-  },
-]
 
 interface ChatMsg { id: string; author: string; text: string }
 
@@ -28,17 +13,45 @@ export default function PomodoroPage() {
   const dict = getDict(lang)
   const p = dict.pomodoro
 
-  const [rooms] = useState<PomodoroRoom[]>(MOCK_ROOMS)
+  const [rooms, setRooms]         = useState<PomodoroRoom[]>([])
+  const [loading, setLoading]     = useState(true)
   const [activeRoom, setActiveRoom] = useState<PomodoroRoom | null>(null)
-  const [isBreak, setIsBreak] = useState(false)
-  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [isBreak, setIsBreak]     = useState(false)
+  const [messages, setMessages]   = useState<ChatMsg[]>([])
   const [chatInput, setChatInput] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
+  const [creating, setCreating]   = useState(false)
+
+  useEffect(() => {
+    fetch('/api/rooms')
+      .then((r) => r.json())
+      .then((data) => { if (data.rooms) setRooms(data.rooms) })
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function createRoom() {
+    if (!newRoomName.trim()) return
+    setCreating(true)
+    const res = await fetch('/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newRoomName.trim() }),
+    })
+    if (res.ok) {
+      const room: PomodoroRoom = await res.json()
+      setRooms((prev) => [room, ...prev])
+      setNewRoomName('')
+      setShowCreate(false)
+      joinRoom(room)
+    }
+    setCreating(false)
+  }
 
   function joinRoom(room: PomodoroRoom) {
     setActiveRoom(room)
     setIsBreak(room.isBreak)
+    setMessages([])
   }
 
   function sendMessage() {
@@ -54,7 +67,6 @@ export default function PomodoroPage() {
   if (activeRoom) {
     return (
       <div className="flex flex-col h-screen" style={{ background: 'var(--bg)' }}>
-        {/* Room header */}
         <div
           className="flex items-center justify-between p-4 border-b"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}
@@ -75,7 +87,6 @@ export default function PomodoroPage() {
           </button>
         </div>
 
-        {/* Timer */}
         <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
           <PomodoroTimer
             totalSeconds={isBreak ? 300 : 1500}
@@ -83,7 +94,6 @@ export default function PomodoroPage() {
             onCycleEnd={handleCycleEnd}
           />
 
-          {/* Chat */}
           <div className="w-full max-w-sm">
             <div
               className="rounded-xl overflow-hidden"
@@ -165,17 +175,35 @@ export default function PomodoroPage() {
               type="text"
               value={newRoomName}
               onChange={(e) => setNewRoomName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createRoom()}
               placeholder={p.room_name}
               className="flex-1 text-sm rounded-lg px-3 py-2 outline-none"
               style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
             />
             <button
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+              onClick={createRoom}
+              disabled={creating || !newRoomName.trim()}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60 flex items-center gap-2"
               style={{ background: 'var(--brand-primary)' }}
             >
+              {creating && <Loader2 size={13} className="animate-spin" />}
               {p.create_room}
             </button>
           </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando salas…</span>
+        </div>
+      )}
+
+      {!loading && rooms.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-2">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            No hay salas activas. ¡Crea la primera!
+          </p>
         </div>
       )}
 

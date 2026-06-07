@@ -6,11 +6,13 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const cursor   = searchParams.get('cursor') ?? undefined
+    const type     = searchParams.get('type') ?? undefined
     const take     = 20
 
     const posts = await db.post.findMany({
       take,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      where: type ? { postType: type } : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
