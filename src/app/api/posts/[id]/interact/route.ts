@@ -45,7 +45,6 @@ export async function POST(
   })
 
   if (existing) {
-    // Toggle off
     await db.interaction.delete({ where: { id: existing.id } })
     if (REPUTATION[type] > 0 && post.userId !== session.user.id) {
       await db.user.update({
@@ -55,15 +54,27 @@ export async function POST(
     }
     return NextResponse.json({ active: false })
   } else {
-    // Toggle on
     await db.interaction.create({
       data: { userId: session.user.id, postId, interactionType: type },
     })
     if (REPUTATION[type] > 0 && post.userId !== session.user.id) {
-      await db.user.update({
-        where: { id: post.userId },
-        data: { reputationPoints: { increment: REPUTATION[type] } },
-      })
+      await Promise.all([
+        db.user.update({
+          where: { id: post.userId },
+          data: { reputationPoints: { increment: REPUTATION[type] } },
+        }),
+        db.notification.create({
+          data: {
+            userId:     post.userId,
+            type,
+            fromUserId: session.user.id,
+            postId,
+            message:    type === 'like'
+              ? `${session.user.name} le dio like a tu publicación`
+              : `${session.user.name} votó tu publicación`,
+          },
+        }),
+      ])
     }
     return NextResponse.json({ active: true })
   }

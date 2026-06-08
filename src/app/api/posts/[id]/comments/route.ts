@@ -39,7 +39,7 @@ export async function POST(
     return NextResponse.json({ error: 'El comentario no puede estar vacío' }, { status: 400 })
   }
 
-  const post = await db.post.findUnique({ where: { id: postId }, select: { id: true } })
+  const post = await db.post.findUnique({ where: { id: postId }, select: { id: true, userId: true } })
   if (!post) return NextResponse.json({ error: 'Post no encontrado' }, { status: 404 })
 
   const comment = await db.comment.create({
@@ -50,15 +50,76 @@ export async function POST(
       parentCommentId: parentCommentId ?? null,
     },
     include: {
-      user: { select: { id: true, name: true, avatarUrl: true, career: true } },
+      user:    { select: { id: true, name: true, avatarUrl: true, career: true } },
+      replies: { include: { user: { select: { id: true, name: true, avatarUrl: true, career: true } } } },
     },
   })
 
-  // Award reputation for helpful answer (+2 per comment as activity bonus)
   await db.user.update({
     where: { id: session.user.id },
     data:  { reputationPoints: { increment: 1 } },
   })
+
+  const notifPromises: Promise<unknown>[] = []
+
+  // Notify post author of comment (if not self)
+  if (post.userId !== session.user.id) {
+    notifPromises.push(
+      db.notification.create({
+        data: {
+          userId:     post.userId,
+          type:       'comment',
+          fromUserId: session.user.id,
+          postId,
+          message:    `${session.user.name} comentó tu publicación`,
+        },
+      }),
+    )
+  }
+
+  // Notify parent comment author of reply (if not self)
+  if (parentCommentId) {
+    const parent = await db.comment.findUnique({ where: { id: parentCommentId }, select: { id: true, userId: true } })
+    if (parent && parent.userId !== session.user.id) {
+      notifPromises.push(
+        db.notification.create({
+          data: {
+            userId:     parent.userId,
+            type:       'reply',
+            fromUserId: session.user.id,
+            postId,
+            message:    `${session.user.name} respondió tu comentario`,
+          },
+        }),
+      )
+    }
+  }
+
+  // Parse @mentions and notify
+  const mentions = [...text.matchAll(/@(\S+)/g)].map((m) => m[1])
+  if (mentions.length > 0) {
+    const mentioned = await db.user.findMany({
+      where: { name: { in: mentions } },
+      select: { id: true },
+    })
+    for (const u of mentioned) {
+      if (u.id !== session.user.id) {
+        notifPromises.push(
+          db.notification.create({
+            data: {
+              userId:     u.id,
+              type:       'mention',
+              fromUserId: session.user.id,
+              postId,
+              message:    `${session.user.name} te mencionó en un comentario`,
+            },
+          }),
+        )
+      }
+    }
+  }
+
+  await Promise.allSettled(notifPromises)
 
   return NextResponse.json({ comment }, { status: 201 })
 }

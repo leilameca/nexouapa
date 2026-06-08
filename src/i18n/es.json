@@ -2,9 +2,10 @@
   "nav": {
     "home": "Inicio",
     "vitrina": "Vitrina",
-    "pomodoro": "Pomodoro",
+    "quiz": "Quiz",
     "notes": "Apuntes",
     "rankings": "Rankings",
+    "notifications": "Notificaciones",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
   },

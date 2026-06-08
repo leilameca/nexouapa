@@ -1,19 +1,33 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Presentation, Timer, BookOpen, Trophy, Settings } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Home, Presentation, BrainCircuit, BookOpen, Bell } from 'lucide-react'
 
 const mobileNav = [
-  { href: '/feed',     Icon: Home },
-  { href: '/vitrina',  Icon: Presentation },
-  { href: '/pomodoro', Icon: Timer },
-  { href: '/apuntes',  Icon: BookOpen },
-  { href: '/rankings', Icon: Trophy },
-  { href: '/settings', Icon: Settings },
+  { href: '/feed',          Icon: Home },
+  { href: '/vitrina',       Icon: Presentation },
+  { href: '/quiz',          Icon: BrainCircuit },
+  { href: '/apuntes',       Icon: BookOpen },
+  { href: '/notificaciones', Icon: Bell },
 ]
 
 export default function MobileNav() {
   const pathname = usePathname()
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/notifications')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setUnread(d.unreadCount ?? 0))
+    const id = setInterval(() => {
+      fetch('/api/notifications')
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => d && setUnread(d.unreadCount ?? 0))
+    }, 30_000)
+    return () => clearInterval(id)
+  }, [])
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 flex md:hidden border-t"
@@ -21,6 +35,7 @@ export default function MobileNav() {
     >
       {mobileNav.map(({ href, Icon }) => {
         const active = pathname.startsWith(href)
+        const isBell = href === '/notificaciones'
         return (
           <Link
             key={href}
@@ -28,7 +43,17 @@ export default function MobileNav() {
             className="flex-1 flex items-center justify-center py-3 transition-colors"
             style={{ color: active ? 'var(--brand-primary)' : 'var(--text-muted)' }}
           >
-            <Icon size={20} strokeWidth={active ? 2.3 : 1.7} />
+            <span className="relative">
+              <Icon size={20} strokeWidth={active ? 2.3 : 1.7} />
+              {isBell && unread > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold text-white px-0.5"
+                  style={{ background: '#ef4444' }}
+                >
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </span>
           </Link>
         )
       })}

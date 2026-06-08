@@ -22,11 +22,45 @@ model User {
   langPreference   String   @default("es")
   createdAt        DateTime @default(now())
 
-  posts            Post[]
-  interactions     Interaction[]
-  comments         Comment[]
-  roomParticipants RoomParticipant[]
-  notes            Note[]
+  posts             Post[]
+  interactions      Interaction[]
+  comments          Comment[]
+  roomParticipants  RoomParticipant[]
+  notes             Note[]
+  following         Follow[]       @relation("Follower")
+  followers         Follow[]       @relation("Following")
+  notifications     Notification[] @relation("NotifRecipient")
+  sentNotifications Notification[] @relation("NotifSender")
+  quizRooms         QuizRoom[]
+  quizMembers       QuizMember[]
+  quizAnswers       QuizAnswer[]
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Follower",  fields: [followerId],  references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+// type: "like" | "upvote" | "comment" | "follow" | "mention" | "reply"
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String
+  fromUserId String
+  postId     String?
+  message    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  recipient User @relation("NotifRecipient", fields: [userId],     references: [id], onDelete: Cascade)
+  sender    User @relation("NotifSender",    fields: [fromUserId], references: [id], onDelete: Cascade)
 }
 
 model Note {
@@ -111,4 +145,57 @@ model RoomParticipant {
   room PomodoroRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roomId])
+}
+
+// Quiz rooms — reemplaza el módulo Pomodoro estático
+model QuizRoom {
+  id        String   @id @default(uuid())
+  hostId    String
+  name      String
+  subject   String?
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  host      User           @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  members   QuizMember[]
+}
+
+model QuizQuestion {
+  id           String @id @default(uuid())
+  roomId       String
+  question     String
+  options      String // JSON: ["opción A","opción B","opción C","opción D"]
+  correctIndex Int    // 0-3
+  orderIndex   Int    @default(0)
+
+  room    QuizRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  answers QuizAnswer[]
+}
+
+model QuizMember {
+  id       String   @id @default(uuid())
+  roomId   String
+  userId   String
+  score    Int      @default(0)
+  joinedAt DateTime @default(now())
+
+  room QuizRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model QuizAnswer {
+  id           String   @id @default(uuid())
+  questionId   String
+  userId       String
+  answerIndex  Int
+  isCorrect    Boolean
+  respondedAt  DateTime @default(now())
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, userId])
 }

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
   MessageCircle, Repeat2, Heart, ChevronUp, ExternalLink,
-  HelpCircle, Layers, FileText, Send, Trash2,
+  HelpCircle, Layers, FileText, Send, Trash2, CornerDownRight,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
@@ -38,11 +38,47 @@ function Avatar({ name, url, userId }: { name: string; url?: string | null; user
   )
 }
 
+function SmallAvatar({ name, url, userId }: { name: string; url?: string | null; userId: string }) {
+  return (
+    <Link href={`/perfil/${userId}`} className="shrink-0 block">
+      {url ? (
+        <img src={url} alt={name} className="w-7 h-7 rounded-full object-cover" />
+      ) : (
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+          style={{ background: 'var(--brand-primary)' }}
+        >
+          {name[0]?.toUpperCase()}
+        </div>
+      )}
+    </Link>
+  )
+}
+
+// Render text with @mentions as links
+function RichText({ text }: { text: string }) {
+  const parts = text.split(/(@\S+)/g)
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith('@') ? (
+          <span key={i} className="font-semibold" style={{ color: 'var(--brand-primary)' }}>
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
+
 interface CommentData {
   id: string
   commentText: string
   createdAt?: string
   user: { id: string; name: string; avatarUrl?: string | null; career: string }
+  replies?: CommentData[]
 }
 
 interface Props {
@@ -57,13 +93,14 @@ export default function PostCard({ post, onInteract, onDelete }: Props) {
   const dict = getDict(lang)
   const f = dict.feed
 
-  const [showComments, setShowComments] = useState(false)
-  const [comments, setComments]         = useState<CommentData[]>([])
-  const [commentText, setCommentText]   = useState('')
+  const [showComments, setShowComments]       = useState(false)
+  const [comments, setComments]               = useState<CommentData[]>([])
+  const [commentText, setCommentText]         = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
-  const [sending, setSending]           = useState(false)
-  const [commentCount, setCommentCount] = useState(post._count.comments)
-  const [deleting, setDeleting]         = useState(false)
+  const [sending, setSending]                 = useState(false)
+  const [commentCount, setCommentCount]       = useState(post._count.comments)
+  const [deleting, setDeleting]               = useState(false)
+  const [replyTo, setReplyTo]                 = useState<CommentData | null>(null)
 
   const { Icon, color } = TYPE_META[post.postType as keyof typeof TYPE_META] ?? TYPE_META.general
   const isUpvotable = post.postType === 'question' || post.postType === 'project'
@@ -88,13 +125,27 @@ export default function PostCard({ post, onInteract, onDelete }: Props) {
     const res = await fetch(`/api/posts/${post.id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: commentText.trim() }),
+      body: JSON.stringify({
+        text: commentText.trim(),
+        parentCommentId: replyTo?.id ?? null,
+      }),
     })
     if (res.ok) {
       const data = await res.json()
-      setComments((prev) => [...prev, data.comment])
+      if (replyTo) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === replyTo.id
+              ? { ...c, replies: [...(c.replies ?? []), data.comment] }
+              : c,
+          ),
+        )
+      } else {
+        setComments((prev) => [...prev, { ...data.comment, replies: [] }])
+      }
       setCommentCount((n) => n + 1)
       setCommentText('')
+      setReplyTo(null)
     }
     setSending(false)
   }
@@ -137,19 +188,6 @@ export default function PostCard({ post, onInteract, onDelete }: Props) {
                 </span>
               </div>
             </div>
-            {isOwner && (
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--text-muted)' }}
-                title="Eliminar"
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-              >
-                <Trash2 size={13} />
-              </button>
-            )}
           </div>
 
           {/* Type badge */}
@@ -181,9 +219,9 @@ export default function PostCard({ post, onInteract, onDelete }: Props) {
             </div>
           )}
 
-          {/* Content */}
+          {/* Content with @mention highlighting */}
           <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-            {post.content}
+            <RichText text={post.content} />
           </p>
 
           {/* Image */}
@@ -253,49 +291,96 @@ export default function PostCard({ post, onInteract, onDelete }: Props) {
               {loadingComments && (
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cargando comentarios…</p>
               )}
+
               {comments.map((c) => (
-                <div key={c.id} className="flex gap-2">
-                  <Link href={`/perfil/${c.user.id}`} className="shrink-0">
+                <div key={c.id}>
+                  <div className="flex gap-2">
+                    <SmallAvatar name={c.user.name} url={c.user.avatarUrl} userId={c.user.id} />
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                      style={{ background: 'var(--brand-primary)' }}
+                      className="flex-1 rounded-xl px-3 py-2"
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
                     >
-                      {c.user.name[0]?.toUpperCase()}
+                      <Link
+                        href={`/perfil/${c.user.id}`}
+                        className="text-xs font-semibold hover:underline"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        {c.user.name}
+                      </Link>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                        <RichText text={c.commentText} />
+                      </p>
+                      <button
+                        onClick={() => setReplyTo(replyTo?.id === c.id ? null : c)}
+                        className="mt-1 text-xs flex items-center gap-1 transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        <CornerDownRight size={10} />
+                        Responder
+                      </button>
                     </div>
-                  </Link>
-                  <div
-                    className="flex-1 rounded-xl px-3 py-2"
-                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
-                  >
-                    <Link
-                      href={`/perfil/${c.user.id}`}
-                      className="text-xs font-semibold hover:underline"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      {c.user.name}
-                    </Link>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-primary)' }}>{c.commentText}</p>
                   </div>
+
+                  {/* Replies */}
+                  {(c.replies ?? []).length > 0 && (
+                    <div className="ml-9 mt-2 space-y-2">
+                      {(c.replies ?? []).map((r) => (
+                        <div key={r.id} className="flex gap-2">
+                          <SmallAvatar name={r.user.name} url={r.user.avatarUrl} userId={r.user.id} />
+                          <div
+                            className="flex-1 rounded-xl px-3 py-2"
+                            style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                          >
+                            <Link
+                              href={`/perfil/${r.user.id}`}
+                              className="text-xs font-semibold hover:underline"
+                              style={{ color: 'var(--text-primary)' }}
+                            >
+                              {r.user.name}
+                            </Link>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                              <RichText text={r.commentText} />
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && submitComment()}
-                  placeholder={`${f.reply}…`}
-                  className="flex-1 text-sm rounded-lg px-3 py-1.5 outline-none"
-                  style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
-                />
-                <button
-                  onClick={submitComment}
-                  disabled={!commentText.trim() || sending}
-                  className="px-3 py-1.5 rounded-lg text-white disabled:opacity-40"
-                  style={{ background: 'var(--brand-primary)' }}
-                >
-                  <Send size={13} />
-                </button>
+
+              {/* Input */}
+              <div className="space-y-1.5">
+                {replyTo && (
+                  <div
+                    className="flex items-center justify-between px-3 py-1 rounded-lg text-xs"
+                    style={{ background: 'color-mix(in srgb, var(--brand-primary) 8%, transparent)', color: 'var(--brand-primary)' }}
+                  >
+                    <span>Respondiendo a <strong>{replyTo.user.name}</strong></span>
+                    <button onClick={() => setReplyTo(null)} style={{ color: 'var(--text-muted)' }}>
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitComment()}
+                    placeholder={replyTo ? `Responder a ${replyTo.user.name}…` : `${f.reply}…`}
+                    className="flex-1 text-sm rounded-lg px-3 py-1.5 outline-none"
+                    style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
+                  />
+                  <button
+                    onClick={submitComment}
+                    disabled={!commentText.trim() || sending}
+                    className="px-3 py-1.5 rounded-lg text-white disabled:opacity-40"
+                    style={{ background: 'var(--brand-primary)' }}
+                  >
+                    <Send size={13} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
