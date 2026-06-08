@@ -23,6 +23,7 @@ export default function FeedPage() {
     subjectTag?: string
     projectTitle?: string
     projectUrl?: string
+    thumbnailUrl?: string
   }) {
     const res = await fetch('/api/posts', {
       method: 'POST',

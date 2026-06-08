@@ -7,12 +7,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const cursor   = searchParams.get('cursor') ?? undefined
     const type     = searchParams.get('type') ?? undefined
+    const userId   = searchParams.get('userId') ?? undefined
     const take     = 20
 
     const posts = await db.post.findMany({
       take,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      where: type ? { postType: type } : undefined,
+      where: {
+        ...(type   ? { postType: type } : {}),
+        ...(userId ? { userId }         : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
@@ -89,7 +93,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { postType, content, subjectTag, projectTitle, projectUrl } = await req.json()
+    const { postType, content, subjectTag, projectTitle, projectUrl, thumbnailUrl } = await req.json()
 
     if (!content?.trim()) {
       return NextResponse.json({ error: 'El contenido es requerido' }, { status: 400 })
@@ -106,9 +110,10 @@ export async function POST(req: NextRequest) {
         userId:       session.user.id,
         postType,
         content,
-        subjectTag:   subjectTag ?? null,
+        subjectTag:   subjectTag   ?? null,
         projectTitle: projectTitle ?? null,
-        projectUrl:   projectUrl ?? null,
+        projectUrl:   projectUrl   ?? null,
+        thumbnailUrl: thumbnailUrl ?? null,
       },
       include: {
         user: {

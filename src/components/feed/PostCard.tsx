@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   MessageCircle, Repeat2, Heart, ChevronUp, ExternalLink,
   HelpCircle, Layers, FileText, Send,
@@ -19,15 +20,20 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function Avatar({ name, url }: { name: string; url?: string | null }) {
-  if (url) return <img src={url} alt={name} className="w-10 h-10 rounded-full object-cover" />
+function Avatar({ name, url, userId }: { name: string; url?: string | null; userId: string }) {
   return (
-    <div
-      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-      style={{ background: 'var(--brand-primary)' }}
-    >
-      {name[0]?.toUpperCase()}
-    </div>
+    <Link href={`/perfil/${userId}`} className="shrink-0 block">
+      {url ? (
+        <img src={url} alt={name} className="w-10 h-10 rounded-full object-cover" />
+      ) : (
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
+          style={{ background: 'var(--brand-primary)' }}
+        >
+          {name[0]?.toUpperCase()}
+        </div>
+      )}
+    </Link>
   )
 }
 
@@ -96,14 +102,18 @@ export default function PostCard({ post, onInteract }: Props) {
       onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface)')}
     >
       <div className="flex gap-3">
-        <Avatar name={post.user.name} url={post.user.avatarUrl} />
+        <Avatar name={post.user.name} url={post.user.avatarUrl} userId={post.user.id} />
 
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+            <Link
+              href={`/perfil/${post.user.id}`}
+              className="font-semibold text-sm hover:underline"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {post.user.name}
-            </span>
+            </Link>
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {post.user.career}
             </span>
@@ -146,12 +156,13 @@ export default function PostCard({ post, onInteract }: Props) {
             {post.content}
           </p>
 
-          {/* Thumbnail */}
+          {/* Image */}
           {post.thumbnailUrl && (
             <img
               src={post.thumbnailUrl}
-              alt="Project thumbnail"
-              className="mt-2 rounded-xl w-full object-cover max-h-52"
+              alt="Imagen adjunta"
+              className="mt-2 rounded-xl w-full object-cover max-h-72 cursor-pointer"
+              onClick={() => window.open(post.thumbnailUrl!, '_blank')}
             />
           )}
 
@@ -201,19 +212,25 @@ export default function PostCard({ post, onInteract }: Props) {
               )}
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-2">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                    style={{ background: 'var(--brand-primary)' }}
-                  >
-                    {c.user.name[0]?.toUpperCase()}
-                  </div>
+                  <Link href={`/perfil/${c.user.id}`} className="shrink-0">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                      style={{ background: 'var(--brand-primary)' }}
+                    >
+                      {c.user.name[0]?.toUpperCase()}
+                    </div>
+                  </Link>
                   <div
                     className="flex-1 rounded-xl px-3 py-2"
                     style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
                   >
-                    <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    <Link
+                      href={`/perfil/${c.user.id}`}
+                      className="text-xs font-semibold hover:underline"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
                       {c.user.name}
-                    </span>
+                    </Link>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-primary)' }}>{c.commentText}</p>
                   </div>
                 </div>

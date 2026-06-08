@@ -14,9 +14,8 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         <Sidebar />
 
         <main
-          className="flex-1 min-w-0 min-h-screen pb-16 md:pb-0"
+          className="flex-1 min-w-0 min-h-screen pb-16 md:pb-0 w-full"
           style={{
-            maxWidth: '680px',
             borderLeft: '1px solid var(--border)',
             borderRight: '1px solid var(--border)',
           }}

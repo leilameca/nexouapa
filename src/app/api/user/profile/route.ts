@@ -9,17 +9,18 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const { name, bio, githubUrl, linkedinUrl } = await req.json()
+    const { name, bio, githubUrl, linkedinUrl, avatarUrl } = await req.json()
 
     const updated = await db.user.update({
       where: { id: session.user.id },
       data: {
-        ...(name       ? { name }       : {}),
-        ...(bio        !== undefined ? { bio }        : {}),
-        ...(githubUrl  !== undefined ? { githubUrl }  : {}),
+        ...(name        ? { name }        : {}),
+        ...(bio         !== undefined ? { bio }         : {}),
+        ...(githubUrl   !== undefined ? { githubUrl }   : {}),
         ...(linkedinUrl !== undefined ? { linkedinUrl } : {}),
+        ...(avatarUrl   !== undefined ? { avatarUrl }   : {}),
       },
-      select: { id: true, name: true, bio: true, githubUrl: true, linkedinUrl: true },
+      select: { id: true, name: true, bio: true, githubUrl: true, linkedinUrl: true, avatarUrl: true },
     })
 
     return NextResponse.json({ user: updated })
