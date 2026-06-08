@@ -42,20 +42,24 @@ export default function ProfilePage() {
     Promise.all([
       fetch(`/api/user/${id}`),
       fetch(`/api/posts?userId=${id}`),
-      fetch(`/api/users/${id}/follow`),
     ])
-      .then(async ([uRes, pRes, fRes]) => {
+      .then(async ([uRes, pRes]) => {
         if (uRes.status === 404) { setNotFound(true); return }
-        const [uData, pData, fData] = await Promise.all([uRes.json(), pRes.json(), fRes.json()])
-        setUser(uData.user)
+        const [uData, pData] = await Promise.all([uRes.json(), pRes.json()])
+        setUser(uData.user ?? null)
+        if (!uData.user) { setNotFound(true); return }
         setPosts(pData.posts ?? [])
-        setFollow({
-          isFollowing:   fData.isFollowing ?? false,
-          followerCount: fData.followerCount ?? 0,
-          followingCount: fData.followingCount ?? 0,
-        })
       })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
+
+    // Follow counts loaded separately (non-blocking)
+    fetch(`/api/users/${id}/follow`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d) setFollow({ isFollowing: d.isFollowing ?? false, followerCount: d.followerCount ?? 0, followingCount: d.followingCount ?? 0 })
+      })
+      .catch(() => {/* follow counts optional */})
   }, [id])
 
   async function toggleFollow() {
