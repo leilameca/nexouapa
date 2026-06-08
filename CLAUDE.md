@@ -3,62 +3,101 @@
 # NEXO UAPA — Project Context for AI Assistants
 
 ## What this project is
-NEXO UAPA is a community, productivity and academic interaction platform for students of Universidad Abierta para Adultos (UAPA). It mirrors the layout of X/Twitter (3-column) but is academic-focused. The PRD is in `PRD_NEXO_UAPA.md`.
+NEXO UAPA is a community, productivity and academic interaction platform for students of Universidad Abierta para Adultos (UAPA). It mirrors the layout of X/Twitter (3-column) but is academic-focused.
 
-## Tech Stack
-- **Framework**: Next.js 14 (App Router) + TypeScript
-- **Styling**: Tailwind CSS + CSS variables for theming
+## Tech Stack (actual — differs from original plan)
+- **Framework**: Next.js 16.2.7 (App Router) + TypeScript
+- **Styling**: Tailwind CSS v4 + CSS variables for theming
 - **Icons**: Lucide React (NO emojis in UI code, ever)
-- **Real-time**: Socket.io (client-side in Next.js, server in `server/`)
-- **DB**: PostgreSQL via Prisma ORM
-- **Cache / Pomodoro sync**: Redis (ioredis)
-- **Auth**: NextAuth.js v5 (email/password + institutional email validation)
-- **State**: Zustand for client state, React Query (TanStack) for server state
+- **DB**: Turso (libsql cloud) via Prisma v7 + `@prisma/adapter-libsql`
+- **Image storage**: Vercel Blob (`@vercel/blob`) — token: `BLOB_READ_WRITE_TOKEN`
+- **Auth**: NextAuth.js v5 (credentials provider, JWT)
+- **State**: Zustand for client state (theme/lang)
+
+## Critical architecture notes
+- **Prisma v7**: datasource URL goes in `prisma.config.ts`, NOT in `schema.prisma`
+- **Turso in production**: must use `https://` URL (not `libsql://`) to avoid "fetch failed" in Vercel serverless
+- **New migrations**: run `npx prisma migrate dev` locally → apply SQL to Turso: `~/.turso/turso db shell nexo-uapa < migration.sql`
+- **NextAuth v5**: route handler `params` is `Promise<{...}>` — always `await params`
+- **next.config.ts**: `serverExternalPackages` required for `@prisma/client`, `@prisma/adapter-libsql`, `@libsql/client`
+
+## Production infrastructure
+- **Hosting**: Vercel → https://nexouapa.vercel.app
+- **Database**: Turso → `https://nexo-uapa-leilanym.aws-us-east-2.turso.io`
+- **Image storage**: Vercel Blob store `nexouapa-images2`
+- **GitHub**: https://github.com/leilameca/nexouapa
+
+## Institutional email validation
+- Students: `@p.uapa.edu.do`
+- Staff/professors: `@uapa.edu.do`
+- Both are accepted in register
 
 ## Folder structure
 ```
 src/
-  app/                   # Next.js App Router pages
-    (auth)/              # Login / Register
-    (main)/              # Authenticated layout (3-column)
-      feed/              # Module B — Feed
-      vitrina/           # Projects showcase
-      pomodoro/          # Module C — Co-working rooms
-      rankings/          # Module D — Leaderboard
-      settings/          # Module A — User settings
+  app/
+    (auth)/login              # Login page
+    (auth)/register           # Register page
+    (main)/feed               # Feed — 3 post types, interactions, images
+    (main)/vitrina            # Projects showcase with filters
+    (main)/pomodoro           # Study rooms with 25/5 timer
+    (main)/apuntes            # Personal notes (CRUD, public/private)
+    (main)/rankings           # Reputation leaderboard
+    (main)/settings           # Profile, avatar upload, theme, language
+    (main)/perfil/[id]        # Public user profile page
+    api/posts                 # GET (feed, filter by type/userId) + POST
+    api/posts/[id]            # DELETE (own posts only)
+    api/posts/[id]/comments   # GET + POST comments
+    api/posts/[id]/interact   # POST like/upvote/repost
+    api/notes                 # GET + POST notes (own user)
+    api/notes/[id]            # PUT + DELETE notes (own user)
+    api/rooms                 # GET rooms + POST create room
+    api/rankings              # GET leaderboard (top 20 by reputationPoints)
+    api/upload                # POST upload image to Vercel Blob
+    api/user/profile          # GET + PUT own profile (incl. avatarUrl)
+    api/user/[id]             # GET public profile
+    api/auth/register         # POST register new user
   components/
-    ui/                  # Reusable primitives (Button, Card, Avatar…)
-    feed/                # Feed-specific components
-    pomodoro/            # Timer, room, chat components
-    layout/              # Sidebar, RightPanel, TopBar
+    feed/PostCard             # Post card with comments, interactions, delete
+    feed/PostComposer         # Composer with image upload (all post types)
+    layout/Sidebar            # Left sidebar (hidden on mobile, icons on md, full on xl)
+    layout/MobileNav          # Bottom nav bar (6 items including Settings)
+    layout/RightPanel         # Right panel: live Pomodoro rooms + top 3 ranking
+    pomodoro/PomodoroTimer    # SVG circular timer
   lib/
-    db.ts                # Prisma client singleton
-    redis.ts             # Redis client singleton
-    auth.ts              # NextAuth config
-    socket.ts            # Socket.io client helper
-  hooks/                 # Custom React hooks
-  stores/                # Zustand stores
-  types/                 # Shared TypeScript types
-  i18n/                  # es.json / en.json translation dictionaries
+    db.ts                     # Prisma client singleton (libsql adapter)
+    auth.ts                   # NextAuth config
+    i18n.ts                   # Translation helper
+    uapa-data.ts              # UAPA schools and careers data
+  stores/
+    appStore.ts               # Zustand: theme + lang (reads from cookie on init)
+  types/
+    index.ts                  # Post, User, Comment, PomodoroRoom, LeaderboardEntry
+  i18n/
+    es.json                   # Spanish translations
+    en.json                   # English translations
 prisma/
-  schema.prisma          # DB schema (Users, Posts, Interactions, Comments, Rooms)
-server/
-  index.ts               # Express + Socket.io server for Pomodoro sync
+  schema.prisma               # Models: User, Post, Interaction, Comment, PomodoroRoom, RoomParticipant, Note
+  prisma.config.ts            # Prisma v7 config (datasource URL lives here)
+  migrations/                 # SQL migration history
 ```
 
-## Key design rules (from PRD)
+## Database entities
+See `prisma/schema.prisma`. Tables:
+- **User** — auth, profile, reputation, avatar, bio, github, linkedin
+- **Post** — general/question/project, thumbnailUrl (images), subjectTag, projectUrl
+- **Interaction** — like/upvote/repost (unique per user+post+type)
+- **Comment** — with parent/reply threading, isUseful flag
+- **PomodoroRoom** — name, school, isBreak, cycleStart, timerSeconds
+- **RoomParticipant** — userId + roomId join
+- **Note** — userId, title, content, subject, isPublic, updatedAt
+
+## Key design rules
 1. **Zero emojis** in hardcoded UI — use Lucide icons only.
 2. **WCAG AA** contrast in dark mode.
 3. **No FOUC** — theme/language loaded from cookie before first paint.
-4. Institutional email validation on register (`@uapa.edu.do` or similar).
-5. WebSocket rooms must clean up on disconnect to avoid memory leaks.
-6. Pomodoro timer runs on the **server** (authoritative), clients read from Redis.
-
-## Modules build order
-1. A — Auth + Settings (login, register, theme toggle, language)
-2. B — Feed (post creation, 3 types, interactions: like/upvote/repost/comment)
-3. C — Pomodoro rooms (WebSocket, Redis timer, break-only chat)
-4. D — Gamification / Rankings (reputation algorithm, leaderboard widget)
+4. Institutional email validation on register.
+5. Only the post/note owner can delete their own content.
 
 ## UAPA Brand colors
 - Primary: `#003C82` (UAPA institutional blue)
@@ -68,16 +107,23 @@ server/
 - Text primary light: `#0D1117`
 - Text primary dark: `#E6EDF3`
 
-## Database entities (Prisma)
-See `prisma/schema.prisma`. Tables: User, Post, Interaction, Comment, PomodoroRoom, RoomParticipant.
-
 ## Current build status
-- [ ] Tailwind theme tokens configured
-- [ ] Prisma schema created
-- [ ] NextAuth setup
-- [ ] 3-column layout shell
-- [ ] Feed module
-- [ ] Pomodoro module
-- [ ] Rankings module
-- [ ] i18n dictionaries
-- [ ] Dark mode persistence
+- [x] Tailwind theme tokens + CSS variables
+- [x] Prisma schema (all 7 models)
+- [x] NextAuth (credentials, JWT, email validation)
+- [x] 3-column layout (responsive: mobile / tablet / desktop)
+- [x] Feed module (3 types, images, likes/upvotes/reposts/comments, delete, pagination)
+- [x] Vitrina module (project posts, school filter, sort recent/popular)
+- [x] Pomodoro module (rooms in DB, 25/5 timer, break-only chat)
+- [x] Rankings module (real reputation points, top 3 + list, profile links)
+- [x] Apuntes module (full CRUD in DB, public/private toggle, live search)
+- [x] User profiles /perfil/[id] (posts, bio, reputation, social links)
+- [x] Avatar/photo upload (Vercel Blob)
+- [x] i18n ES + EN
+- [x] Dark mode persistence (cookie)
+- [x] Right panel with real data (live countdowns, real top 3)
+- [x] Mobile navigation (bottom nav with all 6 sections)
+- [ ] Pomodoro real-time sync between users (WebSocket / SSE)
+- [ ] Notifications (likes, comments on your posts)
+- [ ] Global search (posts + users)
+- [ ] Public notes feed (community notes)
