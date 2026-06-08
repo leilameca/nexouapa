@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  Home, Presentation, BookOpen, Trophy, Settings, LogOut, Bell, BrainCircuit,
+  Home, Presentation, BrainCircuit, BookOpen, Trophy,
+  Settings, LogOut, Bell, Users, MessageCircle,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useAppStore } from '@/stores/appStore'
@@ -12,12 +13,16 @@ import { getDict } from '@/lib/i18n'
 const navItems = [
   { key: 'nav.home',          href: '/feed',          Icon: Home },
   { key: 'nav.vitrina',       href: '/vitrina',        Icon: Presentation },
+  { key: 'nav.groups',        href: '/grupos',         Icon: Users },
+  { key: 'nav.messages',      href: '/mensajes',       Icon: MessageCircle },
   { key: 'nav.quiz',          href: '/quiz',           Icon: BrainCircuit },
   { key: 'nav.notes',         href: '/apuntes',        Icon: BookOpen },
   { key: 'nav.rankings',      href: '/rankings',       Icon: Trophy },
   { key: 'nav.notifications', href: '/notificaciones', Icon: Bell },
   { key: 'nav.settings',      href: '/settings',       Icon: Settings },
 ]
+
+const BADGE_HREFS = ['/notificaciones', '/mensajes']
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -26,14 +31,12 @@ export default function Sidebar() {
   const [unread, setUnread] = useState(0)
 
   useEffect(() => {
-    fetch('/api/notifications')
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setUnread(d.unreadCount ?? 0))
-    const id = setInterval(() => {
+    const load = () =>
       fetch('/api/notifications')
         .then((r) => r.ok ? r.json() : null)
         .then((d) => d && setUnread(d.unreadCount ?? 0))
-    }, 30_000)
+    load()
+    const id = setInterval(load, 30_000)
     return () => clearInterval(id)
   }, [])
 
@@ -49,7 +52,7 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div>
-        <div className="flex items-center gap-2 mb-8 justify-center xl:justify-start px-1">
+        <div className="flex items-center gap-2 mb-6 justify-center xl:justify-start px-1">
           <div
             className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
             style={{ background: 'var(--brand-primary)' }}
@@ -61,8 +64,7 @@ export default function Sidebar() {
           </span>
         </div>
 
-        {/* Nav links */}
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-0.5">
           {navItems.map(({ key, href, Icon }) => {
             const active = pathname.startsWith(href)
             const isBell = href === '/notificaciones'
@@ -95,7 +97,6 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Bottom: logout */}
       <button
         title={label('nav.logout')}
         onClick={() => signOut({ callbackUrl: '/login' })}

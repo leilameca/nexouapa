@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { GitFork, Link2, Trophy, ArrowLeft, BookOpen, UserPlus, UserCheck } from 'lucide-react'
+import { GitFork, Link2, Trophy, ArrowLeft, BookOpen, UserPlus, UserCheck, MessageCircle } from 'lucide-react'
 import PostCard from '@/components/feed/PostCard'
 import type { Post, InteractionType } from '@/types'
 
@@ -29,10 +29,12 @@ interface FollowState {
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const { data: session } = useSession()
+  const router = useRouter()
   const [user, setUser]   = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [follow, setFollow] = useState<FollowState>({ isFollowing: false, followerCount: 0, followingCount: 0 })
   const [followLoading, setFollowLoading] = useState(false)
+  const [msgLoading, setMsgLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -75,6 +77,21 @@ export default function ProfilePage() {
       }))
     }
     setFollowLoading(false)
+  }
+
+  async function openChat() {
+    if (!session?.user?.id || isOwn || msgLoading) return
+    setMsgLoading(true)
+    const res = await fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: id }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      router.push(`/mensajes/${data.conversationId}`)
+    }
+    setMsgLoading(false)
   }
 
   function handleDelete(postId: string) {
@@ -167,18 +184,29 @@ export default function ProfilePage() {
                 {user.name}
               </h1>
               {!isOwn && session?.user?.id && (
-                <button
-                  onClick={toggleFollow}
-                  disabled={followLoading}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all shrink-0"
-                  style={follow.isFollowing
-                    ? { border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'transparent' }
-                    : { background: 'var(--brand-primary)', color: '#fff', border: '1px solid transparent' }
-                  }
-                >
-                  {follow.isFollowing ? <UserCheck size={14} /> : <UserPlus size={14} />}
-                  {follow.isFollowing ? 'Siguiendo' : 'Seguir'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={openChat}
+                    disabled={msgLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all shrink-0"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'transparent' }}
+                  >
+                    <MessageCircle size={14} />
+                    Mensaje
+                  </button>
+                  <button
+                    onClick={toggleFollow}
+                    disabled={followLoading}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all shrink-0"
+                    style={follow.isFollowing
+                      ? { border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'transparent' }
+                      : { background: 'var(--brand-primary)', color: '#fff', border: '1px solid transparent' }
+                    }
+                  >
+                    {follow.isFollowing ? <UserCheck size={14} /> : <UserPlus size={14} />}
+                    {follow.isFollowing ? 'Siguiendo' : 'Seguir'}
+                  </button>
+                </div>
               )}
             </div>
 

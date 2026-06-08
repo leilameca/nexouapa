@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { BookOpen, Plus, Search, FileText, X, Save, Trash2, Globe, Lock, Loader, ArrowLeft } from 'lucide-react'
+import { NoteSkeleton } from '@/components/ui/Skeleton'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
 
@@ -287,8 +288,8 @@ export default function ApuntesPage() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-16">
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando…</span>
+        <div className="p-4 grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => <NoteSkeleton key={i} />)}
         </div>
       )}
 

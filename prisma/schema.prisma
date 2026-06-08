@@ -22,19 +22,29 @@ model User {
   langPreference   String   @default("es")
   createdAt        DateTime @default(now())
 
-  posts             Post[]
-  interactions      Interaction[]
-  comments          Comment[]
-  roomParticipants  RoomParticipant[]
-  notes             Note[]
-  following         Follow[]       @relation("Follower")
-  followers         Follow[]       @relation("Following")
-  notifications     Notification[] @relation("NotifRecipient")
-  sentNotifications Notification[] @relation("NotifSender")
-  quizRooms         QuizRoom[]
-  quizMembers       QuizMember[]
-  quizAnswers       QuizAnswer[]
+  posts                    Post[]
+  interactions             Interaction[]
+  comments                 Comment[]
+  roomParticipants         RoomParticipant[]
+  notes                    Note[]
+  following                Follow[]                  @relation("Follower")
+  followers                Follow[]                  @relation("Following")
+  notifications            Notification[]            @relation("NotifRecipient")
+  sentNotifications        Notification[]            @relation("NotifSender")
+  quizRooms                QuizRoom[]
+  quizMembers              QuizMember[]
+  quizAnswers              QuizAnswer[]
+  conversationParticipants ConversationParticipant[]
+  messagesSent             Message[]
+  blockedUsers             UserBlock[]               @relation("Blocker")
+  blockedByUsers           UserBlock[]               @relation("Blocked")
+  groupsCreated            Group[]                   @relation("GroupCreator")
+  groupMembers             GroupMember[]
+  groupPosts               GroupPost[]
+  groupEvents              GroupEvent[]
 }
+
+// ─── Follow ──────────────────────────────────────────────────────────────────
 
 model Follow {
   id          String   @id @default(uuid())
@@ -48,7 +58,8 @@ model Follow {
   @@unique([followerId, followingId])
 }
 
-// type: "like" | "upvote" | "comment" | "follow" | "mention" | "reply"
+// ─── Notifications ───────────────────────────────────────────────────────────
+
 model Notification {
   id         String   @id @default(uuid())
   userId     String
@@ -63,6 +74,8 @@ model Notification {
   sender    User @relation("NotifSender",    fields: [fromUserId], references: [id], onDelete: Cascade)
 }
 
+// ─── Notes ───────────────────────────────────────────────────────────────────
+
 model Note {
   id        String   @id @default(uuid())
   userId    String
@@ -76,7 +89,8 @@ model Note {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// postType: "general" | "question" | "project"
+// ─── Posts & Interactions ────────────────────────────────────────────────────
+
 model Post {
   id           String   @id @default(uuid())
   userId       String
@@ -93,7 +107,6 @@ model Post {
   comments     Comment[]
 }
 
-// interactionType: "like" | "upvote" | "repost"
 model Interaction {
   id              String   @id @default(uuid())
   userId          String
@@ -122,6 +135,8 @@ model Comment {
   replies Comment[] @relation("CommentThread")
 }
 
+// ─── Pomodoro (legacy) ───────────────────────────────────────────────────────
+
 model PomodoroRoom {
   id           String   @id @default(uuid())
   name         String
@@ -147,7 +162,8 @@ model RoomParticipant {
   @@unique([userId, roomId])
 }
 
-// Quiz rooms — reemplaza el módulo Pomodoro estático
+// ─── Quiz ─────────────────────────────────────────────────────────────────────
+
 model QuizRoom {
   id        String   @id @default(uuid())
   hostId    String
@@ -165,11 +181,11 @@ model QuizQuestion {
   id           String @id @default(uuid())
   roomId       String
   question     String
-  options      String // JSON: ["opción A","opción B","opción C","opción D"]
-  correctIndex Int    // 0-3
+  options      String
+  correctIndex Int
   orderIndex   Int    @default(0)
 
-  room    QuizRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room    QuizRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   answers QuizAnswer[]
 }
 
@@ -187,15 +203,114 @@ model QuizMember {
 }
 
 model QuizAnswer {
-  id           String   @id @default(uuid())
-  questionId   String
-  userId       String
-  answerIndex  Int
-  isCorrect    Boolean
-  respondedAt  DateTime @default(now())
+  id          String   @id @default(uuid())
+  questionId  String
+  userId      String
+  answerIndex Int
+  isCorrect   Boolean
+  respondedAt DateTime @default(now())
 
   question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([questionId, userId])
+}
+
+// ─── Direct Messaging ────────────────────────────────────────────────────────
+
+model Conversation {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  text           String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+// ─── Groups / Study Communities ──────────────────────────────────────────────
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String
+  subject     String?
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  creator User          @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  members GroupMember[]
+  posts   GroupPost[]
+  events  GroupEvent[]
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  groupId  String
+  userId   String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model GroupPost {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GroupEvent {
+  id          String   @id @default(uuid())
+  groupId     String
+  userId      String
+  title       String
+  description String?
+  scheduledAt DateTime
+  createdAt   DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
