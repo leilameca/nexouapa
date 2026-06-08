@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Trophy, Medal } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
@@ -70,9 +71,10 @@ export default function RankingsPage() {
           {top3.map((e) => {
             const medal = MEDAL_STYLE[e.rank]
             return (
-              <div
+              <Link
                 key={e.user.id}
-                className="rounded-xl p-4 flex flex-col items-center gap-2 text-center"
+                href={`/perfil/${e.user.id}`}
+                className="rounded-xl p-4 flex flex-col items-center gap-2 text-center transition-opacity hover:opacity-80"
                 style={{ border: `2px solid ${medal.bg}`, background: 'var(--bg-surface)' }}
               >
                 <span
@@ -89,7 +91,7 @@ export default function RankingsPage() {
                 <p className="text-sm font-bold" style={{ color: 'var(--brand-accent)' }}>
                   {e.reputationPoints} {r.reputation}
                 </p>
-              </div>
+              </Link>
             )
           })}
         </div>
@@ -98,9 +100,10 @@ export default function RankingsPage() {
       {rest.length > 0 && (
         <div className="flex flex-col gap-2 mb-6">
           {rest.map((e) => (
-            <div
+            <Link
               key={e.user.id}
-              className="flex items-center gap-3 p-3 rounded-xl"
+              href={`/perfil/${e.user.id}`}
+              className="flex items-center gap-3 p-3 rounded-xl transition-opacity hover:opacity-80"
               style={{ border: '1px solid var(--border)', background: 'var(--bg-surface)' }}
             >
               <span className="text-sm font-bold w-5 text-right flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
@@ -114,7 +117,7 @@ export default function RankingsPage() {
               <span className="text-sm font-semibold flex-shrink-0" style={{ color: 'var(--brand-accent)' }}>
                 {e.reputationPoints} {r.reputation}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       )}

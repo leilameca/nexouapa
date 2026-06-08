@@ -5,25 +5,34 @@ import PostCard from '@/components/feed/PostCard'
 import type { Post, PostType, InteractionType } from '@/types'
 
 export default function FeedPage() {
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const [posts, setPosts]         = useState<Post[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [nextCursor, setNextCursor]   = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/posts')
       .then((r) => r.json())
       .then((data) => {
         if (data.posts) setPosts(data.posts)
+        setNextCursor(data.nextCursor ?? null)
       })
       .finally(() => setLoading(false))
   }, [])
 
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    const res = await fetch(`/api/posts?cursor=${nextCursor}`)
+    const data = await res.json()
+    if (data.posts) setPosts((prev) => [...prev, ...data.posts])
+    setNextCursor(data.nextCursor ?? null)
+    setLoadingMore(false)
+  }
+
   async function handlePublish(draft: {
-    postType: PostType
-    content: string
-    subjectTag?: string
-    projectTitle?: string
-    projectUrl?: string
-    thumbnailUrl?: string
+    postType: PostType; content: string
+    subjectTag?: string; projectTitle?: string; projectUrl?: string; thumbnailUrl?: string
   }) {
     const res = await fetch('/api/posts', {
       method: 'POST',
@@ -36,8 +45,7 @@ export default function FeedPage() {
     }
   }
 
-  async function handleInteract(postId: string, type: InteractionType) {
-    // Optimistic update
+  function handleInteract(postId: string, type: InteractionType) {
     setPosts((prev) =>
       prev.map((p) => {
         if (p.id !== postId) return p
@@ -57,13 +65,15 @@ export default function FeedPage() {
         }
       })
     )
-
-    // Sync with server
-    await fetch(`/api/posts/${postId}/interact`, {
+    fetch(`/api/posts/${postId}/interact`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type }),
     })
+  }
+
+  function handleDelete(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
   }
 
   if (loading) {
@@ -77,6 +87,7 @@ export default function FeedPage() {
   return (
     <div>
       <PostComposer onPublish={handlePublish} />
+
       {posts.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -84,9 +95,23 @@ export default function FeedPage() {
           </p>
         </div>
       )}
+
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} onInteract={handleInteract} />
+        <PostCard key={post.id} post={post} onInteract={handleInteract} onDelete={handleDelete} />
       ))}
+
+      {nextCursor && (
+        <div className="flex justify-center py-6">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="px-5 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--bg-surface)' }}
+          >
+            {loadingMore ? 'Cargando…' : 'Ver más publicaciones'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -40,6 +40,10 @@ export default function ProfilePage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  function handleDelete(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+  }
+
   async function handleInteract(postId: string, type: InteractionType) {
     setPosts((prev) =>
       prev.map((p) => {
@@ -192,7 +196,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           posts.map((post) => (
-            <PostCard key={post.id} post={post} onInteract={handleInteract} />
+            <PostCard key={post.id} post={post} onInteract={handleInteract} onDelete={handleDelete} />
           ))
         )}
       </div>

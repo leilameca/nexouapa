@@ -1,9 +1,10 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import {
   MessageCircle, Repeat2, Heart, ChevronUp, ExternalLink,
-  HelpCircle, Layers, FileText, Send,
+  HelpCircle, Layers, FileText, Send, Trash2,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { getDict } from '@/lib/i18n'
@@ -47,9 +48,11 @@ interface CommentData {
 interface Props {
   post: Post
   onInteract?: (postId: string, type: InteractionType) => void
+  onDelete?: (postId: string) => void
 }
 
-export default function PostCard({ post, onInteract }: Props) {
+export default function PostCard({ post, onInteract, onDelete }: Props) {
+  const { data: session } = useSession()
   const lang = useAppStore((s) => s.lang)
   const dict = getDict(lang)
   const f = dict.feed
@@ -60,9 +63,11 @@ export default function PostCard({ post, onInteract }: Props) {
   const [loadingComments, setLoadingComments] = useState(false)
   const [sending, setSending]           = useState(false)
   const [commentCount, setCommentCount] = useState(post._count.comments)
+  const [deleting, setDeleting]         = useState(false)
 
   const { Icon, color } = TYPE_META[post.postType as keyof typeof TYPE_META] ?? TYPE_META.general
   const isUpvotable = post.postType === 'question' || post.postType === 'project'
+  const isOwner = session?.user?.id === post.userId
 
   async function toggleComments() {
     if (!showComments && comments.length === 0) {
@@ -94,10 +99,18 @@ export default function PostCard({ post, onInteract }: Props) {
     setSending(false)
   }
 
+  async function handleDelete() {
+    if (!confirm('¿Eliminar esta publicación?')) return
+    setDeleting(true)
+    const res = await fetch(`/api/posts/${post.id}`, { method: 'DELETE' })
+    if (res.ok) onDelete?.(post.id)
+    else setDeleting(false)
+  }
+
   return (
     <article
       className="p-4 border-b transition-colors"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)', opacity: deleting ? 0.5 : 1 }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface)')}
     >
@@ -106,20 +119,37 @@ export default function PostCard({ post, onInteract }: Props) {
 
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link
-              href={`/perfil/${post.user.id}`}
-              className="font-semibold text-sm hover:underline"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {post.user.name}
-            </Link>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {post.user.career}
-            </span>
-            <span className="text-xs ml-auto shrink-0" style={{ color: 'var(--text-muted)' }} suppressHydrationWarning>
-              {fmtDate(post.createdAt)}
-            </span>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  href={`/perfil/${post.user.id}`}
+                  className="font-semibold text-sm hover:underline"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {post.user.name}
+                </Link>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {post.user.career}
+                </span>
+                <span className="text-xs ml-auto shrink-0" style={{ color: 'var(--text-muted)' }} suppressHydrationWarning>
+                  {fmtDate(post.createdAt)}
+                </span>
+              </div>
+            </div>
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: 'var(--text-muted)' }}
+                title="Eliminar"
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
 
           {/* Type badge */}
@@ -202,6 +232,19 @@ export default function PostCard({ post, onInteract }: Props) {
                 onClick={() => onInteract?.(post.id, 'upvote')}
               />
             )}
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="ml-auto flex items-center gap-1 text-xs transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                title="Eliminar publicación"
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
 
           {/* Comments section */}
@@ -235,8 +278,6 @@ export default function PostCard({ post, onInteract }: Props) {
                   </div>
                 </div>
               ))}
-
-              {/* Comment input */}
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -245,11 +286,7 @@ export default function PostCard({ post, onInteract }: Props) {
                   onKeyDown={(e) => e.key === 'Enter' && submitComment()}
                   placeholder={`${f.reply}…`}
                   className="flex-1 text-sm rounded-lg px-3 py-1.5 outline-none"
-                  style={{
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg)',
-                    color: 'var(--text-primary)',
-                  }}
+                  style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)' }}
                 />
                 <button
                   onClick={submitComment}
@@ -271,12 +308,8 @@ export default function PostCard({ post, onInteract }: Props) {
 function ActionBtn({
   icon, count, label, active, activeColor = 'var(--brand-primary)', onClick,
 }: {
-  icon: React.ReactNode
-  count: number
-  label: string
-  active?: boolean
-  activeColor?: string
-  onClick: () => void
+  icon: React.ReactNode; count: number; label: string
+  active?: boolean; activeColor?: string; onClick: () => void
 }) {
   return (
     <button

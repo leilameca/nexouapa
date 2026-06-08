@@ -26,6 +26,20 @@ model User {
   interactions     Interaction[]
   comments         Comment[]
   roomParticipants RoomParticipant[]
+  notes            Note[]
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  content   String
+  subject   String
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // postType: "general" | "question" | "project"
